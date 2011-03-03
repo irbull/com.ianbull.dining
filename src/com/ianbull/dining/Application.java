@@ -1,19 +1,22 @@
 package com.ianbull.dining;
 
+import java.io.File;
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.URIUtil;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.osgi.service.datalocation.Location;
 
 /**
- * A simple OSGi application that creates Philosophers so they can eat.
+ * A simple OSGi application that implements a solution to the Dining Philosophers problem
+ * using the OSGi location service.
  * 
  * @author Ian Bull
  */
@@ -23,7 +26,7 @@ public class Application implements IApplication {
 	public final static int TOTAL_FOOD_TO_EAT = 50;     // Amount of food each philosopher needs to eat
 	public final static int EAT_TIME = 200;             // A multiplier for eating food
 
-	private Philosopher[] philosphers = new Philosopher[TOTAL_PHILOSPHERS];
+	private Philosopher[] philosophers = new Philosopher[TOTAL_PHILOSPHERS];
 	
 	public class Philosopher extends Job {
 
@@ -118,7 +121,9 @@ public class Application implements IApplication {
 		private void eat() throws InterruptedException {
 			int food = getRandomAmountOfFood();
 			foodLeft -= food;
-			Thread.sleep(food * 200);
+			if (foodLeft < 0 ) 
+				foodLeft = 0;
+			Thread.sleep(food * 100);
 			print();
 		}
 	}
@@ -127,7 +132,7 @@ public class Application implements IApplication {
 	 * Utility method to print the remaining units of food for all philosophers
 	 */
 	private synchronized void print() {
-		for (Philosopher philosopher : philosphers) {
+		for (Philosopher philosopher : philosophers) {
 			System.out.print(philosopher.number + " [" + philosopher.foodLeft + "] ");
 		}
 		System.out.println();
@@ -135,13 +140,15 @@ public class Application implements IApplication {
 
 	@Override
 	public Object start(IApplicationContext context) throws Exception {
+		File tempDir = new File(System.getProperty("java.io.tmpdir"));
+		URI baseLocation = tempDir.toURI();
 		for (int i = 0; i < TOTAL_PHILOSPHERS; i++) {
-			philosphers[i] = new Philosopher("Philospher " + i, i, 50, getLockLocation(i), getLockLocation((i+1) % TOTAL_PHILOSPHERS));
-			philosphers[i].schedule();
+			philosophers[i] = new Philosopher("Philospher " + i, i, 50, getLockLocation(baseLocation, i), getLockLocation(baseLocation, (i+1) % TOTAL_PHILOSPHERS));
+			philosophers[i].schedule();
 		}
 		Job.getJobManager().join(this, new NullProgressMonitor());
 
-		System.out.println("All philosphers are done eating");
+		System.out.println("All philosophers are done eating");
 		return IApplication.EXIT_OK;
 	}
 
@@ -149,7 +156,7 @@ public class Application implements IApplication {
 	 * Returns how long the philosopher should 'think' for
 	 */
 	private static int getThinkingTime() {
-		return (int) (Math.random() * 3 * 100);
+		return (int) (Math.random() * 300);
 	}
 
 	/**
@@ -159,14 +166,15 @@ public class Application implements IApplication {
 		return (int) (Math.random() * 10);
 	}
 
-	private static Location getLockLocation(int locationNumber)
+	/**
+	 * Get the lock location for a particular fork.
+	 */
+	private static Location getLockLocation(URI baseLocation, int locationNumber)
 			throws IllegalStateException, IOException {
 		Location anyLoc = (Location)  Activator.getService(Location.class.getName());
-		Location location = anyLoc.createLocation(null, new URL(
-				"file:///home/irbull/tmp/dining/" + locationNumber), false); //$NON-NLS-1$
-		location.set(
-				new URL("file:///home/irbull/tmp/dining/" + locationNumber),
-				false);
+		URI locationURI = URIUtil.append(baseLocation, "" + locationNumber);
+		Location location = anyLoc.createLocation(null, URIUtil.toURL(locationURI), false); //$NON-NLS-1$
+		location.set(URIUtil.toURL(locationURI),false);
 		return location;
 	}
 
