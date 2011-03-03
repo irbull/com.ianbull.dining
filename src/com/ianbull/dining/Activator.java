@@ -2,6 +2,7 @@ package com.ianbull.dining;
 
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
 
 public class Activator implements BundleActivator {
 
@@ -25,6 +26,17 @@ public class Activator implements BundleActivator {
 	 */
 	public void stop(BundleContext bundleContext) throws Exception {
 		Activator.context = null;
+	}
+	
+	public static Object getService(String name) {
+		if (context == null)
+			return null;
+		ServiceReference<?> reference = context.getServiceReference(name);
+		if (reference == null)
+			return null;
+		Object result = context.getService(reference);
+		context.ungetService(reference);
+		return result;
 	}
 
 }

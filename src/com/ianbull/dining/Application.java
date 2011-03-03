@@ -10,7 +10,6 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
-import org.eclipse.equinox.internal.p2.core.helpers.ServiceHelper;
 import org.eclipse.osgi.service.datalocation.Location;
 
 /**
@@ -140,10 +139,7 @@ public class Application implements IApplication {
 
 	private static Location getLockLocation(int locationNumber)
 			throws IllegalStateException, IOException {
-		
-		// TODO: Throw an IO Exception if we cannot lock this location
-		Location anyLoc = (Location) ServiceHelper.getService(
-				Activator.getContext(), Location.class.getName());
+		Location anyLoc = (Location)  Activator.getService(Location.class.getName());
 		Location location = anyLoc.createLocation(null, new URL(
 				"file:///home/irbull/tmp/dining/" + locationNumber), false); //$NON-NLS-1$
 		location.set(
