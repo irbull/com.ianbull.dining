@@ -20,9 +20,11 @@ import org.eclipse.osgi.service.datalocation.Location;
 public class Application implements IApplication {
 
 	public final static int TOTAL_PHILOSPHERS = 15;     // Total number of philosophers
-	public final static int TOTAL_FOOD_TO_EAT = 50;    // Amount of food each philosopher needs to eat
-	public final static int EAT_TIME = 200;            // A multiplier for eating food
+	public final static int TOTAL_FOOD_TO_EAT = 50;     // Amount of food each philosopher needs to eat
+	public final static int EAT_TIME = 200;             // A multiplier for eating food
 
+	private Philosopher[] philosphers = new Philosopher[TOTAL_PHILOSPHERS];
+	
 	public class Philosopher extends Job {
 
 		private final int number;
@@ -30,7 +32,8 @@ public class Application implements IApplication {
 		private final Location leftForkLocation;
 		private final Location rightForkLocation;
 
-		public Philosopher(String name, int number, int foodRemaining, Location leftForkLocation, Location rightForkLocation) {
+		public Philosopher(String name, int number, int foodRemaining, 
+				Location leftForkLocation, Location rightForkLocation) {
 			super(name);
 			this.number = number;
 			this.foodLeft = foodRemaining;
@@ -48,8 +51,14 @@ public class Application implements IApplication {
 		protected IStatus run(IProgressMonitor monitor) {
 			try {
 				thinking: while (foodLeft > 0) {
-					Thread.sleep(getRandomTime());
+					// Wait and do some thinking
+					Thread.sleep(getThinkingTime());
+					
 					while (true) {
+						// Continue until you can acquire both forks.  We could 
+						// sleep for a bit if we don't acquire both forks, but
+						// we are pretty hungry here, and sleeping is never good
+						// on an empty stomach 
 						boolean leftFork = false;
 						boolean rightFork = false;
 						try {
@@ -75,6 +84,9 @@ public class Application implements IApplication {
 			return Status.OK_STATUS;
 		}
 
+		/**
+		 * Blocks until a particular location can be locked
+		 */
 		private boolean acquire(Location l) throws IOException,
 				InterruptedException {
 			boolean lock = l.lock();
@@ -88,6 +100,9 @@ public class Application implements IApplication {
 			}
 		}
 
+		/**
+		 * Releases the lock on a particular location
+		 */
 		private void release(Location l) {
 			try {
 				l.release();
@@ -96,21 +111,24 @@ public class Application implements IApplication {
 			}
 		}
 
+		/**
+		 * Eats a random amount of food, and prints the status of all 
+		 * philosophers.  Eating takes 200ms for each unit of food.
+		 */
 		private void eat() throws InterruptedException {
-			int food = getRandomFood();
+			int food = getRandomAmountOfFood();
 			foodLeft -= food;
 			Thread.sleep(food * 200);
 			print();
 		}
-
 	}
 
-	Philosopher[] philosphers = new Philosopher[TOTAL_PHILOSPHERS];
-
-	public synchronized void print() {
+	/**
+	 * Utility method to print the remaining units of food for all philosophers
+	 */
+	private synchronized void print() {
 		for (Philosopher philosopher : philosphers) {
-			System.out.print(philosopher.number + " [" + philosopher.foodLeft
-					+ "] ");
+			System.out.print(philosopher.number + " [" + philosopher.foodLeft + "] ");
 		}
 		System.out.println();
 	}
@@ -127,13 +145,17 @@ public class Application implements IApplication {
 		return IApplication.EXIT_OK;
 	}
 
-	private static int getRandomTime() {
-		if ( true ) 
-			return 1;
+	/**
+	 * Returns how long the philosopher should 'think' for
+	 */
+	private static int getThinkingTime() {
 		return (int) (Math.random() * 3 * 100);
 	}
 
-	private static int getRandomFood() {
+	/**
+	 * Returns a random amount of food to consume
+	 */
+	private static int getRandomAmountOfFood() {
 		return (int) (Math.random() * 10);
 	}
 
