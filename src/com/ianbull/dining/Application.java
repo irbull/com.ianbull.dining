@@ -13,9 +13,17 @@ import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.equinox.internal.p2.core.helpers.ServiceHelper;
 import org.eclipse.osgi.service.datalocation.Location;
 
+/**
+ * A simple OSGi application that creates Philosophers so they can eat.
+ * 
+ * @author Ian Bull
+ *
+ */
 public class Application implements IApplication {
 
-	public final static int TOTAL_PHILOSPHERS = 5;
+	public final static int TOTAL_PHILOSPHERS = 1;     // Total number of philosophers
+	public final static int TOTAL_FOOD_TO_EAT = 50;    // Amount of food each philosopher needs to eat
+	public final static int EAT_TIME = 200;            // A multiplier for eating food
 
 	public class Philosopher extends Job {
 
@@ -52,7 +60,7 @@ public class Application implements IApplication {
 							if (leftFork && rightFork) {
 								eat();
 								continue thinking;
-							}
+							} 
 						} catch (IOException e) {
 							// do nothing, we will release everything below
 						} finally {
@@ -94,8 +102,6 @@ public class Application implements IApplication {
 			int food = getRandomFood();
 			foodLeft -= food;
 			Thread.sleep(food * 200);
-			// System.out.println("Phil " + number + " has " + foodLeft +
-			// " remaining");
 			print();
 		}
 
