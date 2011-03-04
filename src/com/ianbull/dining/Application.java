@@ -22,8 +22,8 @@ import org.eclipse.osgi.service.datalocation.Location;
  */
 public class Application implements IApplication {
 
-	public final static int TOTAL_PHILOSPHERS = 15;     // Total number of philosophers
-	public final static int TOTAL_FOOD_TO_EAT = 50;     // Amount of food each philosopher needs to eat
+	public final static int TOTAL_PHILOSPHERS = 5;      // Total number of philosophers
+	public final static int TOTAL_FOOD_TO_EAT = 50;    // Amount of food each philosopher needs to eat
 	public final static int EAT_TIME = 200;             // A multiplier for eating food
 
 	private Philosopher[] philosophers = new Philosopher[TOTAL_PHILOSPHERS];
@@ -32,16 +32,16 @@ public class Application implements IApplication {
 
 		private final int number;
 		int foodLeft = 0;
-		private final Location leftForkLocation;
-		private final Location rightForkLocation;
+		private final Location firstForkLocation;
+		private final Location secondForkLocation;
 
 		public Philosopher(String name, int number, int foodRemaining, 
-				Location leftForkLocation, Location rightForkLocation) {
+				Location firstFork, Location secondFork) {
 			super(name);
 			this.number = number;
 			this.foodLeft = foodRemaining;
-			this.leftForkLocation = leftForkLocation;
-			this.rightForkLocation = rightForkLocation;
+			this.firstForkLocation = firstFork;
+			this.secondForkLocation = secondFork;
 		}
 
 		public boolean belongsTo(Object family) {
@@ -53,36 +53,23 @@ public class Application implements IApplication {
 		@Override
 		protected IStatus run(IProgressMonitor monitor) {
 			try {
-				thinking: while (foodLeft > 0) {
+				while (foodLeft > 0) {
 					// Wait and do some thinking
 					Thread.sleep(getThinkingTime());
-					
-					while (true) {
-						// Continue until you can acquire both forks.  We could 
-						// sleep for a bit if we don't acquire both forks, but
-						// we are pretty hungry here, and sleeping is never good
-						// on an empty stomach 
-						boolean leftFork = false;
-						boolean rightFork = false;
 						try {
-							leftFork = acquire(leftForkLocation);
-							rightFork = rightForkLocation.lock();
-							if (leftFork && rightFork) {
-								eat();
-								continue thinking;
-							} 
+							acquire(firstForkLocation);
+							acquire(secondForkLocation);
+							eat();
 						} catch (IOException e) {
 							// do nothing, we will release everything below
 						} finally {
-							if (leftFork)
-								release(leftForkLocation);
-							if (rightFork)
-								release(rightForkLocation);
+							release(secondForkLocation);
+							release(firstForkLocation);
 						}
-					}
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
+				System.exit(0);
 			}
 			return Status.OK_STATUS;
 		}
@@ -140,11 +127,22 @@ public class Application implements IApplication {
 
 	@Override
 	public Object start(IApplicationContext context) throws Exception {
-		File tempDir = new File(System.getProperty("java.io.tmpdir"));
+		File tempDir = new File(System.getProperty("java.io.tmpdir") + "/dining" );
 		URI baseLocation = tempDir.toURI();
 		for (int i = 0; i < TOTAL_PHILOSPHERS; i++) {
-			philosophers[i] = new Philosopher("Philospher " + i, i, 50, getLockLocation(baseLocation, i), getLockLocation(baseLocation, (i+1) % TOTAL_PHILOSPHERS));
-			philosophers[i].schedule();
+			Location first = null;
+			Location second = null;
+			if ( (i + 1) % TOTAL_PHILOSPHERS < i ) {
+				first = getLockLocation(baseLocation, i);
+				second = getLockLocation(baseLocation, (i+1) % TOTAL_PHILOSPHERS);
+			} else {
+				second = getLockLocation(baseLocation, i);
+				first = getLockLocation(baseLocation, (i+1) % TOTAL_PHILOSPHERS);
+			}
+			philosophers[i] = new Philosopher("Philospher " + i, i,TOTAL_FOOD_TO_EAT , first, second);
+		}
+		for (Philosopher philosopher : philosophers) {
+			philosopher.schedule();
 		}
 		Job.getJobManager().join(this, new NullProgressMonitor());
 
@@ -156,14 +154,14 @@ public class Application implements IApplication {
 	 * Returns how long the philosopher should 'think' for
 	 */
 	private static int getThinkingTime() {
-		return (int) (Math.random() * 300);
+		return (int) (Math.random() * 1000);
 	}
 
 	/**
 	 * Returns a random amount of food to consume
 	 */
 	private static int getRandomAmountOfFood() {
-		return (int) (Math.random() * 10);
+		return (int) (Math.random() * 10) + 1;
 	}
 
 	/**
